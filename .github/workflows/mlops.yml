@@ -128,4 +128,12 @@ jobs:
           script: |
             sudo systemctl restart mlops-serve
             sleep 5
-            curl -f http://localhost:8000/health || exit 1
+            for i in $(seq 1 10); do
+              if curl -s -f http://localhost:8000/health; then
+                echo "Health check passed!"
+                exit 0
+              fi
+              echo "Waiting for service to become healthy... retry $i"
+              sleep 3
+            done
+            exit 1
