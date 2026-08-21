@@ -63,7 +63,7 @@ Thay vì cấu hình thủ công từng tài nguyên qua Web Console hoặc hàn
   cd terraform && terraform destroy
   ```
 
-* **Note**: Do chi phí có hạn, sau khi hoàn thành bài lab, và để đủ tài liệu vào thư mục [`submissions/`](../submissions/), tôi đã thực hiện **terraform destroy**. Vì vậy các đường dẫn liên quan (được mô tả trong báo cáo của tôi, hoặc trong các ảnh chụp) sẽ không còn khả dụng nữa. **Có thể sẽ không hoạt động luôn từ lần push cuối cùng này**
+* **Note**: Do năng lực kinh tế có hạn, sau khi hoàn thành bài lab, và để đủ tài liệu vào thư mục [`submissions/`](../submissions/), tôi đã thực hiện **terraform destroy**. Vì vậy các đường dẫn liên quan (được mô tả trong báo cáo của tôi, hoặc trong các ảnh chụp) sẽ không còn khả dụng nữa. **Có thể sẽ không hoạt động luôn từ lần push cuối cùng này**
 
 ---
 
