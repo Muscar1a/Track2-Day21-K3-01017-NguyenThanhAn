@@ -1,0 +1,7 @@
+# Thay đổi các giá trị bên dưới và đổi tên file thành terraform.tfvars
+project_id     = "your-gcp-project-id"
+bucket_name    = "mlops-lab-wine-unique-name-123"
+region         = "us-central1"
+zone           = "us-central1-a"
+vm_user        = "ubuntu"
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... github-actions-deploy"
