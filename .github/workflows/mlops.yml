@@ -173,6 +173,27 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
+            mkdir -p /home/ubuntu/src
+            if [ ! -f /etc/systemd/system/mlops-serve.service ]; then
+              sudo tee /etc/systemd/system/mlops-serve.service > /dev/null <<'EOF'
+            [Unit]
+            Description=MLOps Model Inference Server
+            After=network.target
+
+            [Service]
+            User=ubuntu
+            WorkingDirectory=/home/ubuntu
+            Environment="GCS_BUCKET=${{ secrets.CLOUD_BUCKET }}"
+            ExecStart=/usr/bin/python3 /home/ubuntu/src/serve.py
+            Restart=always
+            RestartSec=5
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+              sudo systemctl daemon-reload
+              sudo systemctl enable mlops-serve
+            fi
             sudo systemctl restart mlops-serve
             sleep 5
             for i in $(seq 1 10); do
@@ -184,3 +205,4 @@ jobs:
               sleep 3
             done
             exit 1
+
