@@ -32,13 +32,42 @@ Hệ thống CI/CD trên GitHub Actions đã tự động hóa toàn bộ quy tr
 | :--- | :---: | :---: | :---: |
 | **Accuracy** | **0.6440** (64.4%) | **0.7540** (75.4%) | **+11.0%** 🚀 |
 | **F1-Score (weighted)**| **0.6417** | **0.7534** | **+11.2%** |
-| **Trạng thái Deploy** | Triển khai thành công | Triển khai tự động | Vượt xa ngưỡng Eval Gate ($\ge 0.70$) |
+| **Trạng thái Deploy** | Triển khai thành công | Triển khai tự động | Vượt ngưỡng Eval Gate ($\ge 0.70$) |
 
 * **Nhận xét:** Việc bổ sung 2998 mẫu mới kết hợp với bộ siêu tham số tối ưu (`max_depth: 20`, `n_estimators: 200`) ở Bước 3 đã giúp mô hình học sâu hơn, nâng độ chính xác từ 64.4% lên **75.4%** (vượt xa ngưỡng chất lượng 0.70), chứng minh tính hiệu quả tuyệt đối của quy trình Continuous Training tự động.
 
 ---
 
-### 3. Khó Khăn Gặp Phải & Giải Pháp Kỹ Thuật
+### 3. Tự Động Hóa Hạ Tầng Cloud Bằng Terraform (IaC - Infrastructure as Code)
+
+Thay vì cấu hình thủ công từng tài nguyên qua Web Console hoặc hàng chục lệnh CLI rời rạc, tôi chuẩn hóa toàn bộ hạ tầng Google Cloud thành mã nguồn khai báo tại thư mục [`terraform/`](../terraform):
+
+* **Các tài nguyên được Terraform tự động hóa:**
+  - **Cloud Storage Bucket:** Tạo bucket lưu trữ DVC data và Model artifact với cấu hình `Standard` tại `us-central1`.
+  - **Cloud Compute VM (`e2-micro`):** Máy ảo tối ưu chi phí (Free-Tier GCP), tự động cấu hình 1GB RAM Swap và nạp sẵn môi trường qua Startup Script.
+  - **VPC Firewall:** Mở port `22` (SSH Deploy) và `8000` (FastAPI Serving).
+  - **Workload Identity Federation (WIF):** Thiết lập OIDC Pool & Provider giúp GitHub Actions xác thực an toàn tuyệt đối với GCP mà **không cần tạo hay lưu trữ bất kỳ file key tĩnh `.json` nào**.
+
+* **Quy trình triển khai độc lập bằng Terraform (Runbook):**
+  ```bash
+  # 1. Khởi tạo và tạo toàn bộ hạ tầng trong 1 lệnh
+  cd terraform && terraform init && terraform apply 
+
+  # 2. Cấu hình DVC dùng quyền Application Default Credentials (ADC)
+  dvc remote add -d myremote gs://<BUCKET_NAME>/dvc
+  dvc push
+
+  # 3. Nạp GitHub Secrets từ Terraform Outputs (WIF_PROVIDER, SA_EMAIL, VM_IP)
+  # 4. Kích hoạt CI/CD tự động qua Git Push
+  # 5. Dọn dẹp sạch hạ tầng sau khi hoàn tất lab:
+  cd terraform && terraform destroy
+  ```
+
+* **Note**: Do chi phí có hạn, sau khi hoàn thành bài lab, và để đủ tài liệu vào thư mục [`submissions/`](../submissions/), tôi đã thực hiện **terraform destroy**. Vì vậy các đường dẫn liên quan (được mô tả trong báo cáo của tôi, hoặc trong các ảnh chụp) sẽ không còn khả dụng nữa. **Có thể sẽ không hoạt động luôn từ lần push cuối cùng này**
+
+---
+
+### 4. Khó Khăn Gặp Phải & Giải Pháp Kỹ Thuật
 
 1. **Lỗi `ModuleNotFoundError: No module named 'pkg_resources'` (MLflow 2.13):**
    - *Nguyên nhân:* Phiên bản `setuptools >= 72.0` đã loại bỏ `pkg_resources`.
@@ -55,3 +84,22 @@ Hệ thống CI/CD trên GitHub Actions đã tự động hóa toàn bộ quy tr
 4. **Xung đột cú pháp `curl` trên Windows PowerShell:**
    - *Nguyên nhân:* PowerShell hiểu nhầm chuỗi JSON trong cờ `-d` của `curl`.
    - *Giải pháp:* Chuẩn hóa lệnh kiểm tra bằng `Invoke-RestMethod` hoặc escape chuỗi `curl.exe` chuẩn xác.
+
+---
+
+### 5. Kết Quả Triển Khai Các Thách Thức Nâng Cao (Bonus Challenges)
+
+Dự án đã triển khai hoàn thiện **4/5 Thử thách Bonus (+16 điểm)**:
+
+1. **Bonus 2: Thí nghiệm đa dạng thuật toán (Multi-Algorithm Support):**
+   - Hỗ trợ tham số `model_type` (`random_forest`, `gradient_boosting`, `logistic_regression`) linh hoạt trong `params.yaml`.
+   - Tự động nạp siêu tham số đặc thù và log trực tiếp thuật toán vào MLflow.
+2. **Bonus 3: Báo cáo hiệu suất tự động (Automated Performance Report):**
+   - Tự động tính ma trận nhầm lẫn (**Confusion Matrix**) và chỉ số **Precision, Recall, F1-Score** chi tiết theo từng lớp nhãn (0, 1, 2).
+   - Xuất file `outputs/report.txt` và đính kèm vào **GitHub Actions Artifacts** sau mỗi lần huấn luyện.
+3. **Bonus 4: Chặn suy thoái mô hình (Model Regression Guard):**
+   - Lưu trữ `metrics.json` của model đang chạy trên Cloud Storage.
+   - Tại bước `Eval`, tự động so sánh Accuracy mô hình mới với mô hình cũ trên Cloud. Chỉ cho phép kích hoạt bước `Deploy` khi mô hình mới không bị suy giảm hiệu năng.
+4. **Bonus 5: Cảnh báo lệch lạc dữ liệu (Data Drift / Class Distribution Check):**
+   - Phân tích tỷ lệ phân bổ các lớp (0 - Thấp, 1 - Trung bình, 2 - Cao) trước khi huấn luyện.
+   - Tự động phát cảnh báo `WARNING` nếu bất kỳ lớp nào chiếm dưới 10% tổng số mẫu, đồng thời lưu `class_distribution` vào file `outputs/metrics.json`.

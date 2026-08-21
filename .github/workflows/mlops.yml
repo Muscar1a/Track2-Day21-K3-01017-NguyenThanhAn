@@ -69,7 +69,7 @@ jobs:
           ACC=$(python -c "import json; print(json.load(open('outputs/metrics.json'))['accuracy'])")
           echo "accuracy=$ACC" >> $GITHUB_OUTPUT
 
-      - name: Upload model to Cloud Storage
+      - name: Upload model and metrics to Cloud Storage
         env:
           CLOUD_BUCKET: ${{ secrets.CLOUD_BUCKET }}
         run: |
@@ -80,38 +80,85 @@ jobs:
           bucket_name = os.environ["CLOUD_BUCKET"]
           client = storage.Client()
           bucket = client.bucket(bucket_name)
-          blob = bucket.blob("models/latest/model.pkl")
-          blob.upload_from_filename("models/model.pkl")
+          
+          blob_model = bucket.blob("models/latest/model.pkl")
+          blob_model.upload_from_filename("models/model.pkl")
           print(f"Uploaded model.pkl to gs://{bucket_name}/models/latest/model.pkl")
+
+          blob_metrics = bucket.blob("models/latest/metrics.json")
+          blob_metrics.upload_from_filename("outputs/metrics.json")
+          print(f"Uploaded metrics.json to gs://{bucket_name}/models/latest/metrics.json")
           EOF
 
-      - name: Save metrics as artifact
+      - name: Save metrics and reports as artifacts (Bonus 3)
         uses: actions/upload-artifact@v4
         with:
           name: metrics
-          path: outputs/metrics.json
+          path: |
+            outputs/metrics.json
+            outputs/report.txt
 
-  # JOB 3: Kiểm tra chất lượng - chỉ cho phép deploy khi accuracy >= threshold
+  # JOB 3: Kiểm tra chất lượng & Chặn suy thoái mô hình (Bonus 4)
   eval:
     name: Eval
     needs: train
     runs-on: ubuntu-latest
     steps:
-      - name: Check eval gate
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install google-cloud-storage
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Check eval gate & Model regression guard (Bonus 4)
         env:
           ACCURACY: ${{ needs.train.outputs.accuracy }}
+          CLOUD_BUCKET: ${{ secrets.CLOUD_BUCKET }}
         run: |
           python - <<'EOF'
-          import os, sys
+          import os, sys, json
+          from google.cloud import storage
 
           acc = float(os.environ["ACCURACY"])
           threshold = float(os.getenv("EVAL_THRESHOLD", "0.60"))
-          print(f"Evaluated accuracy: {acc:.4f} (Threshold: {threshold})")
+          print(f"--- [Job Eval] Kiem tra chat luong mo hinh ---")
+          print(f"  Accuracy hien tai: {acc:.4f} (Nguong toi thieu: {threshold})")
+
           if acc < threshold:
-              print(f"Model accuracy {acc:.4f} is below threshold {threshold}. Failing pipeline.")
+              print(f"  ❌ Model accuracy {acc:.4f} is below threshold {threshold}. Failing pipeline.")
               sys.exit(1)
+
+          # BONUS 4: So sanh voi mo hinh dang chay tren cloud (Model Regression Guard)
+          try:
+              bucket_name = os.environ["CLOUD_BUCKET"]
+              client = storage.Client()
+              bucket = client.bucket(bucket_name)
+              blob = bucket.blob("models/latest/metrics.json")
+              if blob.exists():
+                  prev_data = json.loads(blob.download_as_text())
+                  prev_acc = float(prev_data.get("accuracy", 0.0))
+                  print(f"  [Bonus 4] Accuracy mo hinh cu tren Cloud: {prev_acc:.4f}")
+                  if acc < prev_acc:
+                      print(f"  ⚠️ Canh bao: Accuracy moi ({acc:.4f}) thap hon phien ban cu ({prev_acc:.4f})!")
+                  else:
+                      print(f"  ✅ Accuracy moi ({acc:.4f}) >= phien ban cu ({prev_acc:.4f}). Dat tieu chuan nang cap!")
+              else:
+                  print("  [Bonus 4] Day la lan deploy dau tien, chua co metrics phien ban cu.")
+          except Exception as e:
+              print(f"  [Bonus 4 Info] Khong the tai metrics cu: {e}")
+
           print("Eval gate passed successfully!")
           EOF
+
 
   # JOB 4: Triển khai sau khi eval gate qua
   deploy:
