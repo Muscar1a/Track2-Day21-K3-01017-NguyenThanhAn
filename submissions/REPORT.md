@@ -89,17 +89,26 @@ Thay vì cấu hình thủ công từng tài nguyên qua Web Console hoặc hàn
 
 ### 5. Kết Quả Triển Khai Các Thách Thức Nâng Cao (Bonus Challenges)
 
-Dự án đã triển khai hoàn thiện **4/5 Thử thách Bonus (+16 điểm)**:
+Dự án đã triển khai hoàn thiện trọn vẹn **5/5 Thử thách Bonus (+20 điểm)**:
 
-1. **Bonus 2: Thí nghiệm đa dạng thuật toán (Multi-Algorithm Support):**
+1. **Bonus 1: Tracking MLflow Từ Xa Với DagsHub (Remote MLflow Server):**
+   - Kết nối repository với DagsHub để tạo MLflow Tracking Server trên Cloud.
+   - Cấu hình biến môi trường `MLFLOW_TRACKING_URI`, `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD` qua GitHub Secrets.
+   - Tự động ghi lại toàn bộ parameters, metrics và model lên DagsHub UI trong mỗi lần chạy GitHub Actions.
+
+2. **Bonus 2: Thí nghiệm đa dạng thuật toán (Multi-Algorithm Support):**
    - Hỗ trợ tham số `model_type` (`random_forest`, `gradient_boosting`, `logistic_regression`) linh hoạt trong `params.yaml`.
    - Tự động nạp siêu tham số đặc thù và log trực tiếp thuật toán vào MLflow.
-2. **Bonus 3: Báo cáo hiệu suất tự động (Automated Performance Report):**
-   - Tự động tính ma trận nhầm lẫn (**Confusion Matrix**) và chỉ số **Precision, Recall, F1-Score** chi tiết theo từng lớp nhãn (0, 1, 2).
+
+3. **Bonus 3: Báo cáo hiệu suất tự động (Automated Performance Report):**
+   - Tự động tính ma trận nhầm lẫn (**Confusion Matrix**) và chỉ số **Precision, Recall, F1-Score** chi tiết theo từng lớp nhãn (0 - Thấp, 1 - Trung bình, 2 - Cao).
    - Xuất file `outputs/report.txt` và đính kèm vào **GitHub Actions Artifacts** sau mỗi lần huấn luyện.
-3. **Bonus 4: Chặn suy thoái mô hình (Model Regression Guard):**
+
+4. **Bonus 4: Chặn suy thoái mô hình (Model Regression Guard):**
    - Lưu trữ `metrics.json` của model đang chạy trên Cloud Storage.
    - Tại bước `Eval`, tự động so sánh Accuracy mô hình mới với mô hình cũ trên Cloud. Chỉ cho phép kích hoạt bước `Deploy` khi mô hình mới không bị suy giảm hiệu năng.
-4. **Bonus 5: Cảnh báo lệch lạc dữ liệu (Data Drift / Class Distribution Check):**
+
+5. **Bonus 5: Cảnh báo lệch lạc dữ liệu (Data Drift / Class Distribution Check):**
    - Phân tích tỷ lệ phân bổ các lớp (0 - Thấp, 1 - Trung bình, 2 - Cao) trước khi huấn luyện.
    - Tự động phát cảnh báo `WARNING` nếu bất kỳ lớp nào chiếm dưới 10% tổng số mẫu, đồng thời lưu `class_distribution` vào file `outputs/metrics.json`.
+

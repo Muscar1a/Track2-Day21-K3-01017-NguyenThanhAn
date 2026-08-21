@@ -14,16 +14,19 @@ EVAL_THRESHOLD = 0.70
 
 tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
 mlflow.set_tracking_uri(tracking_uri)
-if "sqlite" in tracking_uri:
-    os.makedirs("mlartifacts", exist_ok=True)
-    art_uri = pathlib.Path("mlartifacts").resolve().as_uri()
-    exp = mlflow.get_experiment_by_name("wine-quality")
-    if exp is None:
-        try:
-            mlflow.create_experiment("wine-quality", artifact_location=art_uri)
-        except Exception:
-            pass
+try:
+    if "sqlite" in tracking_uri:
+        os.makedirs("mlartifacts", exist_ok=True)
+        art_uri = pathlib.Path("mlartifacts").resolve().as_uri()
+        exp = mlflow.get_experiment_by_name("wine-quality")
+        if exp is None:
+            try:
+                mlflow.create_experiment("wine-quality", artifact_location=art_uri)
+            except Exception:
+                pass
     mlflow.set_experiment("wine-quality")
+except Exception as e:
+    print(f"[MLflow Warning] Could not set experiment: {e}")
 
 
 def train(

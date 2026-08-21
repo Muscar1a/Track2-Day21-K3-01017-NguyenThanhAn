@@ -60,8 +60,19 @@ jobs:
         run: |
           dvc pull data/train_phase1.csv.dvc data/eval.csv.dvc
 
-      - name: Train model
-        run: python src/train.py
+      - name: Train model (with DagsHub Remote Tracking - Bonus 1)
+        env:
+          DAGSHUB_USER: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_PASS: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          if [ -n "$DAGSHUB_USER" ] && [ -n "$DAGSHUB_PASS" ]; then
+            export MLFLOW_TRACKING_URI="https://dagshub.com/${DAGSHUB_USER}/Track2-Day21-K3-01017-NguyenThanhAn.mlflow"
+            export MLFLOW_TRACKING_USERNAME="$DAGSHUB_USER"
+            export MLFLOW_TRACKING_PASSWORD="$DAGSHUB_PASS"
+            echo "Connected to remote MLflow Tracking Server on DagsHub: $MLFLOW_TRACKING_URI"
+          fi
+          python src/train.py
+
 
       - name: Read metrics
         id: read_metrics
